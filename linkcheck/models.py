@@ -288,11 +288,11 @@ class Link(models.Model):
     def display_url(self):
         # when page /test/ has a anchor link to /test/#anchor, we display it
         # as "#anchor" rather than "/test/#anchor"
-        if self.url.url.count('#'):
-            url_part, anchor_part = self.url.url.split('#')
-            absolute_url = self.content_object.get_absolute_url()
-            if url_part == absolute_url:
-                return '#' + anchor_part
+        # if self.url.url.count('#'):
+        #     url_part, anchor_part = self.url.url.split('#')
+        #     absolute_url = self.content_object.get_absolute_url()
+        #     if url_part == absolute_url:
+        #         return '#' + anchor_part
         return self.url.url
 
 
