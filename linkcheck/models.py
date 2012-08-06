@@ -122,6 +122,7 @@ class Url(models.Model):
 
         if check_internal and (not self.external):
             if not(self.url):
+                self.status = True
                 self.message = 'Empty link'
 
             elif self.url.startswith('mailto:'):
