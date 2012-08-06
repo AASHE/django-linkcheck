@@ -223,7 +223,7 @@ class Url(models.Model):
                             response = urllib2.urlopen(req, timeout=TIMEOUT)
                         else:
                             response = urllib2.urlopen(req)
-                    except ValueError:
+                    except ValueError, IncompleteRead:
                         # ...except sometimes it triggers a bug in urllib2
                         if TIMEOUT:
                             response = urllib2.urlopen(url, timeout=TIMEOUT)
