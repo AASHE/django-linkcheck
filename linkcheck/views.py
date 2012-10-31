@@ -129,6 +129,7 @@ def report(request):
             'qry_data': rqst.urlencode(),
             'report_type': report_type,
             'ignored_count': Link.objects.filter(ignore=True).count(),
+            'count': qset.count(),
         },
         RequestContext(request),
     )
