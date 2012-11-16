@@ -51,12 +51,12 @@ suggestions for elaboration or clarification would be gratefully accepted.
 Settings
 --------
 
-LINKCHECK_EXTERNAL_RECHECK_INTERVAL
+LINKCHECK_RECHECK_INTERVAL
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Default: 10080 (1 week in minutes)
 
-Will not recheck any external link that has been checked more recently than this value.
+Will not recheck any link that has been checked more recently than this value.
 
 LINKCHECK_EXTERNAL_REGEX_STRING
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -92,26 +92,14 @@ Default: 255
 The length of the URL field. Defaults to 255 for compatibility with MySQL (see http://docs.djangoproject.com/en/dev/ref/databases/#notes-on-specific-fields )
 
 
-SITE_DOMAIN and LINKCHECK_SITE_DOMAINS
+SITE_DOMAIN
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Linkcheck tests external and internal using differently. Internal links use the Django test client whereas external links are tested using urllib2.
+Linkcheck treats all links as external because in certain situations, internal links fail to be checked properly. For example, when a django site is mounted on a specific path while files are mounted on another.
 
-Testing internal links this as if they were external can cause errors in some circumstances so Linkcheck needs to know which external urls are to be treated as internal. 
-
-Linkcheck looks for either of the settings above. It only uses SITE_DOMAIN if LINKCHECK_SITE_DOMAINS isn't present
-
+Linkcheck uses SITE_DOMAIN ex:
 
 SITE_DOMAIN = "mysite.com"
-
-would tell linkchecker to treat the following as internal links:
-
-mysite.com
-www.mysite.com
-test.mysite.com
-
-If you instead set LINKCHECK_SITE_DOMAINS to be a list or tuple then you can explicitly list the domains that should be treated as internal.
-
 
 django-filebrowser integration
 ------------------------------

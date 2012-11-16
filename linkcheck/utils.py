@@ -61,7 +61,7 @@ class LinkCheckHandler(ClientHandler):
                 new_exception_middleware.append(method)
         self._exception_middleware = new_exception_middleware
 
-def check_links(external_recheck_interval=10080, limit=-1, check_internal=True, check_external=True):
+def check_links(recheck_interval=10080, limit=-1):
 
     recheck_datetime = datetime.now() - timedelta(minutes=external_recheck_interval)
     
@@ -72,7 +72,7 @@ def check_links(external_recheck_interval=10080, limit=-1, check_internal=True, 
         urls = urls[:limit]
 
     for u in urls:
-        u.check(check_internal=check_internal, check_external=check_external)
+        u.check()
 
 def update_urls(urls, content_type, object_id):
     # url structure = (field, link text, url)

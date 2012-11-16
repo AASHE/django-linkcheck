@@ -21,6 +21,9 @@ setup(
         'linkcheck.tests',
         'linkcheck.tests.sampleapp',
     ],
+    requirements=[
+        'requests',
+    ],
     package_data={
         'linkcheck': [
             'templates/linkcheck/*.html',

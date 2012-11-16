@@ -22,7 +22,7 @@ from linkcheck_settings import MAX_URL_LENGTH
 from linkcheck_settings import MEDIA_PREFIX
 from linkcheck_settings import SITE_DOMAINS
 from linkcheck_settings import EXTERNAL_REGEX_STRING
-from linkcheck_settings import EXTERNAL_RECHECK_INTERVAL
+from linkcheck_settings import RECHECK_INTERVAL
 
 logger = logging.getLogger('linkcheck')
 
@@ -91,167 +91,110 @@ class Url(models.Model):
             url = self.url
         return urllib2.unquote(url).decode('utf8')
 
-    def check(self, check_internal=True, check_external=True, external_recheck_interval=EXTERNAL_RECHECK_INTERVAL):
+    def check(self, recheck_interval=RECHECK_INTERVAL):
 
         from linkcheck.utils import LinkCheckHandler
-        external_recheck_datetime = datetime.now() - timedelta(minutes=external_recheck_interval)
-        self.status  = False
-
-        # Remove current domain from URLs as the test client chokes when trying to test them during a page save
-        # They shouldn't generally exist but occasionally slip through
-        # If settings.SITE_DOMAINS isn't set then use settings.SITE_DOMAIN
-        # but also check for variants: example.org, www.example.org, test.example.org
-
+        external_recheck_datetime = datetime.now() - timedelta(minutes=recheck_interval)
+        self.status = False
+        
         original_url = None # used to restore the original url afterwards
 
-        # if SITE_DOMAINS: #if the setting is present
-        #     internal_exceptions = SITE_DOMAINS
-        # 
-        # else: # try using SITE_DOMAIN
-        #     root_domain = settings.SITE_DOMAIN
-        #     if root_domain.startswith('www.'):
-        #         root_domain = root_domain[4:]
-        #     elif root_domain.startswith('test.'):
-        #         root_domain = root_domain[5:]
-        #     internal_exceptions = ['http://'+root_domain, 'http://www.'+root_domain, 'http://test.'+root_domain]
-        # 
-        # for ex in internal_exceptions:
-        #     if ex and self.url.startswith(ex):
-        #         original_url = self.url
-        #         self.url = self.url.replace(ex, '', 1)
+        if not(self.url):
+            self.status = True
+            self.message = 'Empty link'
 
-        if check_internal and (not self.external):
-            if not(self.url):
+        elif self.url.startswith('mailto:'):
+            self.status = None
+            self.message = 'Email link (not automatically checked)'
+
+        elif self.url.startswith('#'):
+            self.status = None
+            self.message = 'Link to within the same page (not automatically checked)'
+
+        elif self.url.startswith(MEDIA_PREFIX):
+            #TODO Assumes a direct mapping from media url to local filesystem path. This will break quite easily for alternate setups
+            if os.path.exists(settings.MEDIA_ROOT + self.url_unquoted()[len(MEDIA_PREFIX)-1:]):
+                self.message = 'Working file link'
                 self.status = True
-                self.message = 'Empty link'
+            else:
+                self.message = 'Missing Document'
 
-            elif self.url.startswith('mailto:'):
-                self.status = None
-                self.message = 'Email link (not automatically checked)'
-
-            elif self.url.startswith('#'):
-                self.status = None
-                self.message = 'Link to within the same page (not automatically checked)'
-
-            elif self.url.startswith(MEDIA_PREFIX):
-                #TODO Assumes a direct mapping from media url to local filesystem path. This will break quite easily for alternate setups
-                if os.path.exists(settings.MEDIA_ROOT + self.url_unquoted()[len(MEDIA_PREFIX)-1:]):
-                    self.message = 'Working file link'
-                    self.status = True
-                else:
-                    self.message = 'Missing Document'
-
-            elif getattr(self, '_internal_hash', False) and getattr(self, '_instance', None):
-                # This is a hash link pointing to itself
-                from linkcheck import parse_anchors
-                
-                hash = self._internal_hash
-                instance = self._instance
-                if hash == '#': # special case, point to #
+        elif getattr(self, '_internal_hash', False) and getattr(self, '_instance', None):
+            # This is a hash link pointing to itself
+            from linkcheck import parse_anchors
+            
+            hash = self._internal_hash
+            instance = self._instance
+            if hash == '#': # special case, point to #
+                self.message = 'Working internal hash anchor'
+                self.status = True
+            else:
+                hash = hash[1:] #'#something' => 'something'
+                html_content = ''
+                for field in instance._linklist.html_fields:
+                    html_content += getattr(instance, field, '')
+                names = parse_anchors(html_content)
+                if hash in names:
                     self.message = 'Working internal hash anchor'
                     self.status = True
                 else:
-                    hash = hash[1:] #'#something' => 'something'
-                    html_content = ''
-                    for field in instance._linklist.html_fields:
-                        html_content += getattr(instance, field, '')
-                    names = parse_anchors(html_content)
-                    if hash in names:
-                        self.message = 'Working internal hash anchor'
-                        self.status = True
-                    else:
-                        self.message = 'Broken internal hash anchor'
+                    self.message = 'Broken internal hash anchor'
+                    logger.info('checking external link: %s' % self.url)
+                    if self.last_checked and (self.last_checked > external_recheck_datetime):
+                        return self.status
+            
+        else:
+          if self.url.startswith("/"):
+              # append site_domain to path
+              root_domain = settings.SITE_DOMAIN
+              self.url = "http://%s%s" % (root_domain, self.url)
+          
+          try:
+              # Remove URL fragment identifiers
+              url = self.url.rsplit('#')[0]
 
-            elif self.url.startswith('/'):
-                old_prepend_setting = settings.PREPEND_WWW
-                settings.PREPEND_WWW = False
-                c = Client()
-                c.handler = LinkCheckHandler()
-                response = c.get(self.url, follow=True)
-                if response.status_code == 200:
-                    self.message = 'Working internal link'
-                    self.status = True
-                    # see if the internal link points an anchor
-                    if self.url[-1] == '#': # special case, point to #
-                        self.message = 'Working internal hash anchor'
-                    elif self.url.count('#'):
-                        anchor = self.url.split('#')[1]
-                        from linkcheck import parse_anchors
-                        names = parse_anchors(response.content)
-                        if anchor in names:
-                            self.message = 'Working internal hash anchor'
-                            self.status = True
-                        else:
-                            self.message = 'Broken internal hash anchor'
-                            self.status = False
+              if self.url.count('#'):
+                  # We have to get the content so we can check the anchors
+                  if TIMEOUT:
+                      response = urllib2.urlopen(url, timeout=TIMEOUT)
+                  else:
+                      response = urllib2.urlopen(url)
+              else:
+                  # Might as well just do a HEAD request
+                  req = HeadRequest(url, headers={'User-Agent' : "http://%s Linkchecker" % settings.SITE_DOMAIN})
+                  try:
+                      if TIMEOUT:
+                          response = urllib2.urlopen(req, timeout=TIMEOUT)
+                      else:
+                          response = urllib2.urlopen(req)
+                  except:
+                      # ...except sometimes it triggers a bug in urllib2
+                      if TIMEOUT:
+                          response = urllib2.urlopen(url, timeout=TIMEOUT)
+                      else:
+                          response = urllib2.urlopen(url)
 
-                elif (response.status_code == 302 or response.status_code == 301):
-                    self.status = None
-                    self.message = 'This link redirects: code %d (not automatically checked)' % (response.status_code, )
-                else:
-                    self.message = 'Broken internal link'
-                settings.PREPEND_WWW = old_prepend_setting
-            else:
-                self.message = 'Invalid URL'
+              self.message = ' '.join([str(response.code), response.msg])
+              self.status = True
 
-            if original_url: # restore the original url before saving
-                self.url = original_url
+              if self.url.count('#'):
 
-            self.last_checked  = datetime.now()
-            self.save()
+                  anchor = self.url.split('#')[1]
+                  from linkcheck import parse_anchors
+                  try:
+                      names = parse_anchors(response.read())
+                      if anchor in names:
+                          self.message = 'Working hash anchor'
+                          self.status = True
+                      else:
+                          self.message = 'Broken hash anchor'
+                          self.status = False
 
-        elif check_external and self.external:
-            logger.info('checking external link: %s' % self.url)
-            if self.last_checked and (self.last_checked > external_recheck_datetime):
-                return self.status
-
-            try:
-
-                # Remove URL fragment identifiers
-                url = self.url.rsplit('#')[0]
-
-                if self.url.count('#'):
-                    # We have to get the content so we can check the anchors
-                    if TIMEOUT:
-                        response = urllib2.urlopen(url, timeout=TIMEOUT)
-                    else:
-                        response = urllib2.urlopen(url)
-                else:
-                    # Might as well just do a HEAD request
-                    req = HeadRequest(url, headers={'User-Agent' : "http://%s Linkchecker" % settings.SITE_DOMAIN})
-                    try:
-                        if TIMEOUT:
-                            response = urllib2.urlopen(req, timeout=TIMEOUT)
-                        else:
-                            response = urllib2.urlopen(req)
-                    except:
-                        # ...except sometimes it triggers a bug in urllib2
-                        if TIMEOUT:
-                            response = urllib2.urlopen(url, timeout=TIMEOUT)
-                        else:
-                            response = urllib2.urlopen(url)
-                            
-                self.message = ' '.join([str(response.code), response.msg])
-                self.status = True
-
-                if self.url.count('#'):
-
-                    anchor = self.url.split('#')[1]
-                    from linkcheck import parse_anchors
-                    try:
-                        names = parse_anchors(response.read())
-                        if anchor in names:
-                            self.message = 'Working external hash anchor'
-                            self.status = True
-                        else:
-                            self.message = 'Broken external hash anchor'
-                            self.status = False
-
-                    except:
-                        # The external web page is mal-formatted #or maybe other parse errors like encoding
-                        # I reckon a broken anchor on an otherwise good URL should count as a pass
-                        self.message = "Page OK but anchor can't be checked"
-                        self.status = True
+                  except:
+                      # The external web page is mal-formatted #or maybe other parse errors like encoding
+                      # I reckon a broken anchor on an otherwise good URL should count as a pass
+                      self.message = "Page OK but anchor can't be checked"
+                      self.status = True
 
             except BadStatusLine:
                     self.message = "Bad Status Line"
@@ -269,9 +212,13 @@ class Url(models.Model):
                     self.message = 'Error: '+str(e.code)
                 else:
                     self.message = 'Redirect. Check manually: '+str(e.code)
-            self.last_checked  = datetime.now()
-            self.save()
 
+        if original_url: # restore the original url before saving
+            self.url = original_url
+
+        self.last_checked  = datetime.now()
+        self.save()
+            
         return self.status
 
 class Link(models.Model):
