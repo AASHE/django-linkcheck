@@ -63,7 +63,7 @@ class LinkCheckHandler(ClientHandler):
 
 def check_links(recheck_interval=10080, limit=-1):
 
-    recheck_datetime = datetime.now() - timedelta(minutes=external_recheck_interval)
+    recheck_datetime = datetime.now() - timedelta(minutes=recheck_interval)
     
     urls = Url.objects.filter(still_exists__exact='TRUE').exclude(last_checked__gt=recheck_datetime)
 
