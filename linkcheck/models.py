@@ -104,21 +104,21 @@ class Url(models.Model):
 
         original_url = None # used to restore the original url afterwards
 
-        if SITE_DOMAINS: #if the setting is present
-            internal_exceptions = SITE_DOMAINS
-
-        else: # try using SITE_DOMAIN
-            root_domain = settings.SITE_DOMAIN
-            if root_domain.startswith('www.'):
-                root_domain = root_domain[4:]
-            elif root_domain.startswith('test.'):
-                root_domain = root_domain[5:]
-            internal_exceptions = ['http://'+root_domain, 'http://www.'+root_domain, 'http://test.'+root_domain]
-
-        for ex in internal_exceptions:
-            if ex and self.url.startswith(ex):
-                original_url = self.url
-                self.url = self.url.replace(ex, '', 1)
+        # if SITE_DOMAINS: #if the setting is present
+        #     internal_exceptions = SITE_DOMAINS
+        # 
+        # else: # try using SITE_DOMAIN
+        #     root_domain = settings.SITE_DOMAIN
+        #     if root_domain.startswith('www.'):
+        #         root_domain = root_domain[4:]
+        #     elif root_domain.startswith('test.'):
+        #         root_domain = root_domain[5:]
+        #     internal_exceptions = ['http://'+root_domain, 'http://www.'+root_domain, 'http://test.'+root_domain]
+        # 
+        # for ex in internal_exceptions:
+        #     if ex and self.url.startswith(ex):
+        #         original_url = self.url
+        #         self.url = self.url.replace(ex, '', 1)
 
         if check_internal and (not self.external):
             if not(self.url):
