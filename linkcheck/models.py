@@ -20,7 +20,6 @@ from django.test.client import Client
 
 from linkcheck_settings import MAX_URL_LENGTH
 from linkcheck_settings import MEDIA_PREFIX
-from linkcheck_settings import SITE_DOMAINS
 from linkcheck_settings import EXTERNAL_REGEX_STRING
 from linkcheck_settings import RECHECK_INTERVAL
 
@@ -196,22 +195,22 @@ class Url(models.Model):
                       self.message = "Page OK but anchor can't be checked"
                       self.status = True
 
-            except BadStatusLine:
-                    self.message = "Bad Status Line"
+          except BadStatusLine:
+                  self.message = "Bad Status Line"
 
-            except urllib2.HTTPError, e:
-                if hasattr(e, 'code') and hasattr(e, 'msg'):
-                    self.message = ' '.join([str(e.code), e.msg])
-                else:
-                    self.message = "Unknown Error"
+          except urllib2.HTTPError, e:
+              if hasattr(e, 'code') and hasattr(e, 'msg'):
+                  self.message = ' '.join([str(e.code), e.msg])
+              else:
+                  self.message = "Unknown Error"
 
-            except urllib2.URLError, e:
-                if hasattr(e, 'reason'):
-                    self.message = 'Unreachable: '+str(e.reason)
-                elif hasattr(e, 'code') and e.code!=301:
-                    self.message = 'Error: '+str(e.code)
-                else:
-                    self.message = 'Redirect. Check manually: '+str(e.code)
+          except urllib2.URLError, e:
+              if hasattr(e, 'reason'):
+                  self.message = 'Unreachable: '+str(e.reason)
+              elif hasattr(e, 'code') and e.code!=301:
+                  self.message = 'Error: '+str(e.code)
+              else:
+                  self.message = 'Redirect. Check manually: '+str(e.code)
 
         if original_url: # restore the original url before saving
             self.url = original_url
