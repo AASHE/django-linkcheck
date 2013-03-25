@@ -94,6 +94,7 @@ class Linklist(object):
     html_fields = []
     url_fields = []
     image_fields = []
+    search_fields = []
     # You can override object_filter and object_exclude in a linklist class. Just provide a dictionary to be used as a Django lookup filter.
     # Only objects that pass the filter will be queried for links. 
     # This doesn't affect whether an object is regarded as a valid link target. Only as a source.

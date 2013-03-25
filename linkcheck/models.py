@@ -8,7 +8,8 @@ from datetime import timedelta
 from httplib import BadStatusLine
 from HTMLParser import HTMLParseError
 import logging
-import urllib2
+import urllib, urllib2
+import json
 
 from django.conf import settings
 from django.utils.importlib import import_module
@@ -22,6 +23,7 @@ from linkcheck_settings import MAX_URL_LENGTH
 from linkcheck_settings import MEDIA_PREFIX
 from linkcheck_settings import EXTERNAL_REGEX_STRING
 from linkcheck_settings import RECHECK_INTERVAL
+from linkcheck_settings import GOOGLE_API_KEY
 
 logger = logging.getLogger('linkcheck')
 
@@ -228,6 +230,7 @@ class Link(models.Model):
     content_object = generic.GenericForeignKey('content_type', 'object_id')
     field = models.CharField(max_length=128)
     url = models.ForeignKey(Url, related_name="links")
+    suggested_url = models.URLField()
     text = models.CharField(max_length=256, default='')
     ignore = models.BooleanField(default=False)
 
@@ -241,6 +244,25 @@ class Link(models.Model):
         #     if url_part == absolute_url:
         #         return '#' + anchor_part
         return self.url.url
+
+    # Query google api for first result, use this as a "suggested url"
+    def get_suggestion(self):
+        if GOOGLE_API_KEY and not self.suggested_url and not self.url.status:
+            try:
+                # get linklist for content type
+                # NOTE: content type must be registered with verbose name for this to work
+                search_fields = all_linklists.get(self.content_type.name).search_fields
+                search_string = ""
+                for field in search_fields:
+                    search_string = "%s %s" % (search_string, self.content_object.__getattribute__(field))
+                search_string = urllib.quote_plus(search_string)
+                query = "https://www.googleapis.com/customsearch/v1?key=%s&cx=017576662512468239146:omuauf_lfve&q=%s" % (GOOGLE_API_KEY, search_string)
+                data = urllib2.urlopen(query)
+                data = json.load(data)
+                self.suggested_url = data['items'][0]['link']
+                self.save()
+            except KeyError:
+                pass
 
 
 def link_post_delete(sender, instance, **kwargs):

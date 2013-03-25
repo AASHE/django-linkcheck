@@ -74,6 +74,18 @@ def check_links(recheck_interval=10080, limit=-1):
     for u in urls:
         u.check()
 
+def get_suggestions(limit=100, model=None):
+    if model:
+        links = Link.objects.filter(content_type__name=model, suggested_url='')
+    else:
+        links = Link.objects.filter(suggested_url='')
+
+    if limit and limit > 0:
+        links = links[:limit]
+
+    for l in links:
+        l.get_suggestion()
+
 def update_urls(urls, content_type, object_id):
     # url structure = (field, link text, url)
     for field, link_text, url in urls:
@@ -103,3 +115,4 @@ def find_all_links(all_linklists):
 
 def unignore():
     Link.objects.update(ignore=False)
+
