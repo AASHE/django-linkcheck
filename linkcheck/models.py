@@ -266,7 +266,6 @@ class Link(models.Model):
                 data = urllib2.urlopen(query)
                 data = json.load(data)
                 self.suggested_url = data['items'][0]['link']
-                self.save()
             except KeyError:
                 # likely no results found
                 pass
@@ -275,6 +274,7 @@ class Link(models.Model):
                    print "403 Returned: Likely daily rate limit exceeded"
                else:
                    pass
+            self.save()
 
 def link_post_delete(sender, instance, **kwargs):
     try:

@@ -150,7 +150,7 @@
                             <th></th>
                             <th></th>
                             {% for link in object.link_list %}
-                                <tr id="link{{ link.id }}">
+                                <tr id="link{{ link.id }}" {% if link.content_object.published == 0 %}class="unpublished" style="background-color: yellow"{% endif %}>
                                     <td><a href='{{link.url}}' target='_blank'>{{ link.display_url }}</a></td>
                                     <td>{{ link.field }}</td>
                                     <td><a href="{{ link.suggested_url }}" target='_blank'>{{ link.suggested_url }}</a>
