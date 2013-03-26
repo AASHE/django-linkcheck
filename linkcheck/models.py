@@ -232,6 +232,7 @@ class Link(models.Model):
     url = models.ForeignKey(Url, related_name="links")
     suggested_url = models.URLField()
     suggested = models.BooleanField(default=False)
+    suggested_query = models.CharField(max_length=256)
     text = models.CharField(max_length=256, default='')
     ignore = models.BooleanField(default=False)
 
@@ -250,15 +251,17 @@ class Link(models.Model):
     def get_suggestion(self):
         if GOOGLE_API_KEY and not self.url.status and not self.suggested:
             self.suggested = True
+            # get linklist for content type
+            # NOTE: content type must be registered with verbose name for this to work
+            search_fields = all_linklists.get(self.content_type.name).search_fields
+            search_string = ""
+            for field in search_fields:
+                search_string = "%s %s" % (search_string, self.content_object.__getattribute__(field))
+            # prepare string for search
+            self.suggested_query = search_string
+            search_string = urllib.quote(search_string.lstrip())
             try:
-                # get linklist for content type
-                # NOTE: content type must be registered with verbose name for this to work
-                search_fields = all_linklists.get(self.content_type.name).search_fields
-                search_string = ""
-                for field in search_fields:
-                    search_string = "%s %s" % (search_string, self.content_object.__getattribute__(field))
-                # prepare string for search
-                search_string = urllib.quote(search_string.lstrip())
+                # TODO Make this only query the original domain
                 query = "https://www.googleapis.com/customsearch/v1?key=%s&cx=017576662512468239146:omuauf_lfve&q=%s" % (GOOGLE_API_KEY, search_string)
                 data = urllib2.urlopen(query)
                 data = json.load(data)
