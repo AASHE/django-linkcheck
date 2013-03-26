@@ -231,6 +231,7 @@ class Link(models.Model):
     field = models.CharField(max_length=128)
     url = models.ForeignKey(Url, related_name="links")
     suggested_url = models.URLField()
+    suggested = models.BooleanField(default=False)
     text = models.CharField(max_length=256, default='')
     ignore = models.BooleanField(default=False)
 
@@ -247,7 +248,8 @@ class Link(models.Model):
 
     # Query google api for first result, use this as a "suggested url"
     def get_suggestion(self):
-        if GOOGLE_API_KEY and not self.suggested_url and not self.url.status:
+        if GOOGLE_API_KEY and not self.url.status and not self.suggested:
+            self.suggested = True
             try:
                 # get linklist for content type
                 # NOTE: content type must be registered with verbose name for this to work
@@ -255,15 +257,21 @@ class Link(models.Model):
                 search_string = ""
                 for field in search_fields:
                     search_string = "%s %s" % (search_string, self.content_object.__getattribute__(field))
-                search_string = urllib.quote_plus(search_string)
+                # prepare string for search
+                search_string = urllib.quote(search_string.lstrip())
                 query = "https://www.googleapis.com/customsearch/v1?key=%s&cx=017576662512468239146:omuauf_lfve&q=%s" % (GOOGLE_API_KEY, search_string)
                 data = urllib2.urlopen(query)
                 data = json.load(data)
                 self.suggested_url = data['items'][0]['link']
                 self.save()
             except KeyError:
+                # likely no results found
                 pass
-
+            except urllib2.HTTPError, err:
+               if err.code == 403:
+                   print "403 Returned: Likely daily rate limit exceeded"
+               else:
+                   pass
 
 def link_post_delete(sender, instance, **kwargs):
     try:

@@ -76,14 +76,15 @@ def check_links(recheck_interval=10080, limit=-1):
 
 def get_suggestions(limit=100, model=None):
     if model:
-        links = Link.objects.filter(content_type__name=model, suggested_url='')
+        links = Link.objects.filter(content_type__name=model, suggested=False, url__status=False)
     else:
-        links = Link.objects.filter(suggested_url='')
+        links = Link.objects.filter(suggested=False, url__status=False)
 
     if limit and limit > 0:
         links = links[:limit]
 
     for l in links:
+        print "getting suggestion for " + l.url.url
         l.get_suggestion()
 
 def update_urls(urls, content_type, object_id):
