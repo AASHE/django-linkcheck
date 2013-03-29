@@ -273,6 +273,7 @@ class Link(models.Model):
                 pass
             except urllib2.HTTPError, err:
                if err.code == 403:
+                   self.suggested = False
                    print "403 Returned: Likely daily rate limit exceeded"
                else:
                    pass
