@@ -268,8 +268,6 @@ class Link(models.Model):
                 data = urllib2.urlopen(query)
                 data = json.load(data)
                 self.suggested_url = data['items'][0]['link']
-                import pdb
-                pdb.set_trace()
             except KeyError:
                 # likely no results found
                 pass
