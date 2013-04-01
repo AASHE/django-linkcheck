@@ -53,9 +53,21 @@
             return false;
         });
 
+        $(".suggest").submit(function(){
+            $.ajax({
+                url: this.action,
+                dataType: 'json',
+                type: 'POST',
+                success: function(data) {
+                    var link = data['link'];
+                    $('tr#link'+link).hide('medium');
+                }
+            });
+            return false;
+        });
+
+
     });
-
-
 
 </script>
 
@@ -87,10 +99,12 @@
         background-color: white;
         border: 1px solid #ddd;
         margin: 10px 0 0 0;
+        table-layout: fixed;
     }
     
     .links td, .links tr {
         border: 1px solid #ddd;
+        overflow: hidden;
     }
     
     .links th {
@@ -143,12 +157,13 @@
                         <a href='{{object.object.get_absolute_url}}' style="text-decoration: underline;">view {{content_type.content_type.name}}</a>&nbsp;&nbsp;
                         <a href='{{object.admin_url}}' style="text-decoration: underline;">edit {{content_type.content_type.name}}</a>
                         <table class="links">
-                            <th style='width: 40%;'>Destination</th>
-                            <th style='width: 15%;'>Field to Edit</th>
-                            <th style='width: 15%;'>Suggested URL</th> 
-                            <th style='width: 15%;'>Status</th>
-                            <th></th>
-                            <th></th>
+                            <th width="30%">Destination</th>
+                            <th>Field to Edit</th>
+                            <th width="30%">Suggested URL</th> 
+                            <th>Status</th>
+                            <th width="10%"></th>
+                            <th width="6%"></th>
+                            <th width="5%"></th>
                             {% for link in object.link_list %}
                                 <tr id="link{{ link.id }}" {% if link.content_object.published == 0 %}class="unpublished" style="background-color: yellow"{% endif %}>
                                     <td><a href='{{link.url}}' target='_blank'>{{ link.display_url }}</a></td>
@@ -162,6 +177,11 @@
                                     {% endif %}
                                     </td>
                                     <td style='font-weight: bold; color: {{link.url.colour}};' class="link_message">{{ link.url.message }}</td>
+                                    <td class="actioncell">
+                                        {% if link.suggested %}
+                                            <form class="suggest" action="{{ request.META.PATH_INFO }}?{% if request.META.QUERY_STRING %}{{ request.META.QUERY_STRING }}&{% else %}{% endif %}suggest={{ link.id }}"><input type="submit" value="Use Suggestion" /></form>    
+                                        {% endif %}
+                                    </td>
                                     <td class="actioncell">
                                         {% if not link.url.status %}
                                             <form class="recheck" action="{{ request.META.PATH_INFO }}?{% if request.META.QUERY_STRING %}{{ request.META.QUERY_STRING }}&{% else %}{% endif %}recheck={{ link.id }}"><input type="submit" value="Recheck" /></form>    

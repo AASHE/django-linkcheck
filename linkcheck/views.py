@@ -8,6 +8,7 @@ except:
     
 from django.contrib.admin.templatetags.adminmedia import admin_media_prefix
 from django.contrib.admin.views.decorators import staff_member_required
+from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.contrib.contenttypes.models import ContentType
 from django.core.paginator import Paginator
 from django.core.urlresolvers import reverse
@@ -20,8 +21,8 @@ from django.conf import settings
 from linkcheck.linkcheck_settings import RESULTS_PER_PAGE
 from linkcheck.models import Link
 
-
 @staff_member_required
+@csrf_exempt
 def report(request):
     
     outerkeyfunc = itemgetter('content_type_id')
@@ -59,6 +60,20 @@ def report(request):
                     'message': url.message,
                     'colour': url.colour,
                 })
+                return HttpResponse(json, mimetype='application/javascript')
+
+        suggest_link_id = request.GET.get('suggest', None)
+        if suggest_link_id != None:
+            link = Link.objects.get(id=suggest_link_id)
+            # get content object
+            content_object = link.content_object
+            # set content object field
+            if link.suggested_url:
+                content_object.__setattr__(link.field, link.suggested_url)
+                content_object.save()
+            # TODO change this to make sense
+            if request.is_ajax():
+                json = simplejson.dumps({'link': suggest_link_id})
                 return HttpResponse(json, mimetype='application/javascript')
 
     link_filter = request.GET.get('filters', 'show_invalid')

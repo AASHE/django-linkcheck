@@ -249,7 +249,7 @@ class Link(models.Model):
 
     # Query google api for first result, use this as a "suggested url"
     def get_suggestion(self):
-        if GOOGLE_API_KEY:
+        if GOOGLE_API_KEY and GOOGLE_CX:
             self.suggested = True
             # get linklist for content type
             # NOTE: content type must be registered with verbose name for this to work
@@ -264,7 +264,7 @@ class Link(models.Model):
                 # 014955680860349223306:vapi7echb7m is the unique ID
                 # of aashe custom search engine
                 # it only searches *.edu
-                query = "https://www.googleapis.com/customsearch/v1?key=%s&cx=014955680860349223306:vapi7echb7m&q=%s" % (GOOGLE_API_KEY, search_string)
+                query = "https://www.googleapis.com/customsearch/v1?key=%s&cx=%s&q=%s" % (GOOGLE_API_KEY, GOOGLE_CX, search_string)
                 data = urllib2.urlopen(query)
                 data = json.load(data)
                 self.suggested_url = data['items'][0]['link']
