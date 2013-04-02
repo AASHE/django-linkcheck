@@ -23,7 +23,7 @@ from linkcheck_settings import MAX_URL_LENGTH
 from linkcheck_settings import MEDIA_PREFIX
 from linkcheck_settings import EXTERNAL_REGEX_STRING
 from linkcheck_settings import RECHECK_INTERVAL
-from linkcheck_settings import GOOGLE_API_KEY
+from linkcheck_settings import GOOGLE_API_KEY, GOOGLE_CX
 
 logger = logging.getLogger('linkcheck')
 
